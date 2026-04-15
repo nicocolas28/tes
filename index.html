@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digit Counter - Analisis Angka pada Gambar</title>
+    <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        .preview {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview.show {
+            display: block;
+        }
+
+        .preview img {
+            width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-reset {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #d0d0d0;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid #667eea;
+        }
+
+        .result-digit {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .result-count {
+            font-size: 1.3em;
+            color: #764ba2;
+            font-weight: bold;
+        }
+
+        .result-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .summary-total {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: #666;
+            font-weight: bold;
+        }
+
+        .extracted-text {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .extracted-text.show {
+            display: block;
+        }
+
+        .extracted-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-family: Arial;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #c33;
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔢 Digit Counter</h1>
+            <p>Analisis dan hitung angka pada gambar</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Section: Upload -->
+            <div class="section">
+                <div class="section-title">📁 Upload Gambar</div>
+
+                <div class="error" id="errorMsg"></div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text"><strong>Klik atau drag gambar ke sini</strong></div>
+                    <div class="upload-hint">Format: JPG, PNG, BMP, TIFF (Max 10MB)</div>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+
+                <div class="preview" id="preview">
+                    <img id="previewImg" alt="Preview">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-analyze" id="analyzeBtn" disabled>🔍 Analisis</button>
+                    <button class="btn-reset" id="resetBtn" onclick="resetAll()">🔄 Reset</button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Menganalisis gambar...</div>
+                </div>
+            </div>
+
+            <!-- Right Section: Results -->
+            <div class="section">
+                <div class="section-title">📊 Hasil Analisis</div>
+
+                <div class="results" id="results">
+                    <div id="resultsList"></div>
+                    <div class="result-summary" id="resultSummary">
+                        <div class="summary-label">Total Angka yang Ditemukan</div>
+                        <div class="summary-total" id="totalDigits">0</div>
+                    </div>
+                </div>
+
+                <div class="no-data" id="noData">
+                    Upload gambar dan klik "Analisis" untuk melihat hasil
+                </div>
+
+                <div class="extracted-text" id="extractedText">
+                    <div class="extracted-title">📄 Teks Lengkap:</div>
+                    <div id="extractedContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedImage = null;
+
+        // Upload Area
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const previewImg = document.getElementById('previewImg');
+        const preview = document.getElementById('preview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const noData = document.getElementById('noData');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // Upload event listeners
+        uploadArea.addEventListener('click', () => imageInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            // Validasi ukuran file
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File terlalu besar! Max 10MB');
+                return;
+            }
+
+            // Validasi tipe file
+            if (!file.type.startsWith('image/')) {
+                showError('File harus berupa gambar!');
+                return;
+            }
+
+            selectedImage = file;
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                preview.classList.add('show');
+                analyzeBtn.disabled = false;
+                errorMsg.classList.remove('show');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Analyze button
+        analyzeBtn.addEventListener('click', analyzeImage);
+
+        async function analyzeImage() {
+            if (!selectedImage) return;
+
+            analyzeBtn.disabled = true;
+            loading.classList.add('show');
+            results.classList.remove('show');
+            noData.classList.add('show');
+            document.getElementById('extractedText').classList.remove('show');
+
+            try {
+                const { data: { text } } = await Tesseract.recognize(selectedImage);
+
+                // Extract and count numbers (adjacent digits as single unit)
+                const numberCount = {};
+                const numbers = text.match(/\d+/g) || [];
+
+                numbers.forEach(num => {
+                    numberCount[num] = (numberCount[num] || 0) + 1;
+                });
+
+                // Display results
+                displayResults(numberCount, text);
+
+                loading.classList.remove('show');
+                results.classList.add('show');
+                noData.classList.remove('show');
+
+            } catch (error) {
+                showError('Error saat menganalisis: ' + error.message);
+                loading.classList.remove('show');
+            }
+
+            analyzeBtn.disabled = false;
+        }
+
+        function displayResults(numberCount, fullText) {
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+
+            if (Object.keys(numberCount).length === 0) {
+                resultsList.innerHTML = '<div class="no-data">Tidak ada angka ditemukan pada gambar</div>';
+                return;
+            }
+
+            // Sort numbers numerically
+            const sortedNumbers = Object.keys(numberCount).sort((a, b) => {
+                return parseInt(a) - parseInt(b);
+            });
+            let totalNumbers = 0;
+
+            sortedNumbers.forEach(number => {
+                const count = numberCount[number];
+                totalNumbers += count;
+
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <div class="result-digit">${number}</div>
+                    <div class="result-count">${count} kali</div>
+                `;
+                resultsList.appendChild(item);
+            });
+
+            // Update summary
+            document.getElementById('totalDigits').textContent = totalNumbers;
+
+            // Display extracted text
+            if (fullText.trim()) {
+                document.getElementById('extractedContent').textContent = fullText.trim();
+                document.getElementById('extractedText').classList.add('show');
+            }
+        }
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.add('show');
+        }
+
+        function resetAll() {
+            selectedImage = null;
+            imageInput.value = '';
+            preview.classList.remove('show');
+            results.classList.remove('show');
+            noData.classList.add('show');
+            loading.classList.remove('show');
+            analyzeBtn.disabled = true;
+            errorMsg.classList.remove('show');
+            document.getElementById('extractedText').classList.remove('show');
+        }
+    </script>
+</body>
+
+</html>
